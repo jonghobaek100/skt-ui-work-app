@@ -14,6 +14,17 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+import subprocess
+
+def upgrade_openai_library():
+    try:
+        result = subprocess.run(["pip", "install", "--upgrade", "openai"], capture_output=True, text=True, check=True)
+        st.success("openai 라이브러리가 성공적으로 업그레이드되었습니다!")
+        st.text(result.stdout)
+    except subprocess.CalledProcessError as e:
+        st.error("openai 업그레이드 중 오류가 발생했습니다.")
+        st.text(e.stderr)
+
 # API keys and URLs
 NAVER_CLIENT_ID = os.getenv('NAVER_CLIENT_ID')
 NAVER_CLIENT_SECRET = os.getenv('NAVER_CLIENT_SECRET')
@@ -78,16 +89,13 @@ def get_fire_spread_prediction(gps_coordinates, weather_info, fire_time):
         f"Weather Data: {weather_info}\n"
         "Predict the spread of fire as described."
     )
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_instruction}
-        ],
+    response = openai.Completion.create(
+        engine="gpt-4",
+        prompt=f"{system_instruction}\n{user_instruction}",
         temperature=0.5,
         max_tokens=1000
     )
-    return json.loads(response['choices'][0]['message']['content'])
+    return json.loads(response.choices[0].text.strip())
 
 # Function to filter facilities within a radius
 def filter_facilities(data, gps_coordinates, radius):
