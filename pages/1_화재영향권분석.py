@@ -65,6 +65,8 @@ def get_weather_info(latitude, longitude):
 
 # Function to call OpenAI for fire spread prediction
 def get_fire_spread_prediction(gps_coordinates, weather_info, fire_time):
+    import json
+
     system_instruction = (
         "You are an expert in fire spread prediction. "
         "Using the provided fire location, time, and weather data, predict the fire spread areas for 1, 2, and 3 hours later. "
@@ -85,7 +87,7 @@ def get_fire_spread_prediction(gps_coordinates, weather_info, fire_time):
         temperature=0.5,
         max_tokens=1000
     )
-    return response['choices'][0]['message']['content']
+    return json.loads(response['choices'][0]['message']['content'])
 
 # Function to filter facilities within a radius
 def filter_facilities(data, gps_coordinates, radius):
@@ -138,22 +140,24 @@ def main():
         if gps_coordinates:
             st.success(f"📍 GPS 좌표: {gps_coordinates}")
             weather_info = get_weather_info(gps_coordinates[0], gps_coordinates[1])
-            predictions_raw = get_fire_spread_prediction(gps_coordinates, weather_info, fire_time)
-            predictions = eval(predictions_raw)  # Convert string to dictionary
+            try:
+                predictions = get_fire_spread_prediction(gps_coordinates, weather_info, fire_time)
 
-            # Load facility data
-            file_path = 'AI교육_케이블현황_GIS_경남 양산,SKT_샘플2.csv'
-            data = pd.read_csv(file_path)
+                # Load facility data
+                file_path = 'AI교육_케이블현황_GIS_경남 양산,SKT_샘플2.csv'
+                data = pd.read_csv(file_path)
 
-            # Filter facilities and display results
-            for idx, (key, prediction) in enumerate(predictions.items()):
-                radius = prediction['radius']
-                filtered_data = filter_facilities(data, gps_coordinates, radius)
-                st.write(f"{key} 확산 영역 내 시설")
-                st.dataframe(filtered_data)
+                # Filter facilities and display results
+                for idx, (key, prediction) in enumerate(predictions.items()):
+                    radius = prediction['radius']
+                    filtered_data = filter_facilities(data, gps_coordinates, radius)
+                    st.write(f"{key} 확산 영역 내 시설")
+                    st.dataframe(filtered_data)
 
-            # Display map
-            display_fire_map(gps_coordinates, list(predictions.values()), filtered_data)
+                # Display map
+                display_fire_map(gps_coordinates, list(predictions.values()), filtered_data)
+            except Exception as e:
+                st.error(f"예측 요청 중 오류가 발생했습니다: {e}")
 
 if __name__ == "__main__":
     main()
